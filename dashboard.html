@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Alpha VCFS - Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+  :root{--bg:#0b0f0b;--card:#121812;--text:#d0d0d0;--head:#fff;--sub:#8b9a8b;--bor:#1f2a1f;--inp-bg:#0a0f0a;--inp-txt:#fff;--btn:#4ade80;--btn-txt:#000}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;display:flex;justify-content:center;min-height:100vh;padding:20px;margin:0}
+  .container{max-width:500px;width:100%}
+  .card{background:var(--card);border:1px solid var(--bor);border-radius:12px;padding:20px;margin-bottom:20px}
+  input,select,button{width:100%;padding:12px;margin:8px 0;background:var(--inp-bg);border:1px solid var(--bor);color:var(--inp-txt);font-size:1rem;border-radius:8px;outline:none}
+  button{background:var(--btn);color:var(--btn-txt);font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.1)}
+  .hidden{display:none}
+  .warn{color:#f0f;margin-top:5px}
+  .request-card{background:#1e2a1e;border-radius:8px;padding:12px;margin-bottom:10px}
+  .btn-sm{padding:6px 12px;font-size:0.8rem;width:auto;background:var(--btn);color:var(--btn-txt);border:none;border-radius:6px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="container" id="authContainer">
+  <div class="card" id="loginCard">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p style="margin-top:10px;">No account? <a href="#" onclick="showSignup()" style="color:var(--btn);">Sign up</a></p>
+  </div>
+  <div class="card hidden" id="signupCard">
+    <h2>Sign Up</h2>
+    <input type="email" id="signupEmail" placeholder="Email">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <button onclick="signup()">Sign Up</button>
+    <p style="margin-top:10px;">Already have an account? <a href="#" onclick="showLogin()" style="color:var(--btn);">Login</a></p>
+  </div>
+</div>
+
+<div class="container hidden" id="dashboardContainer">
+  <div class="card">
+    <h2>Welcome, <span id="userEmail"></span></h2>
+    <button onclick="logout()" style="background:#f0f;color:#fff;">Logout</button>
+  </div>
+  <div class="card">
+    <h3>Request a VCF Session</h3>
+    <input type="text" id="reqName" placeholder="Session Name (e.g. Round 1)">
+    <input type="number" id="reqTarget" placeholder="Target Contacts (e.g. 50)">
+    <input type="text" id="reqGroupLink" placeholder="WhatsApp Group Invite Link">
+    <button onclick="submitRequest()">Submit Request</button>
+    <div id="reqMsg" class="warn"></div>
+  </div>
+  <div class="card">
+    <h3>Your Previous Requests</h3>
+    <div id="requestsList"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  import { getDatabase, ref, push, set, onValue, query, orderByChild } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQwmSD9lc6A0G-AhGBMCBayhM4Ox-jcEs",
+    authDomain: "status-views-boost.firebaseapp.com",
+    projectId: "status-views-boost",
+    storageBucket: "status-views-boost.firebasestorage.app",
+    messagingSenderId: "497892708994",
+    appId: "1:497892708994:web:a169130977e576f0915a9b"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  window.login = async () => {
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+    try { await signInWithEmailAndPassword(auth, email, password); } catch(e) { alert(e.message); }
+  };
+  window.signup = async () => {
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
+    try { await createUserWithEmailAndPassword(auth, email, password); } catch(e) { alert(e.message); }
+  };
+  window.logout = () => signOut(auth);
+  window.showSignup = () => {
+    document.getElementById("loginCard").classList.add("hidden");
+    document.getElementById("signupCard").classList.remove("hidden");
+  };
+  window.showLogin = () => {
+    document.getElementById("signupCard").classList.add("hidden");
+    document.getElementById("loginCard").classList.remove("hidden");
+  };
+
+  window.submitRequest = async () => {
+    const name = document.getElementById("reqName").value.trim();
+    const target = parseInt(document.getElementById("reqTarget").value);
+    const groupLink = document.getElementById("reqGroupLink").value.trim();
+    const msg = document.getElementById("reqMsg");
+    if (!name || !target || !groupLink) { msg.textContent = "All fields required."; return; }
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      const requestsRef = push(ref(db, 'users/' + user.uid + '/requests'));
+      await set(requestsRef, {
+        name, target, groupLink,
+        createdAt: Date.now(),
+        status: "pending"
+      });
+      msg.textContent = "Request submitted! Alpha will create your session soon.";
+      document.getElementById("reqName").value = "";
+      document.getElementById("reqTarget").value = "";
+      document.getElementById("reqGroupLink").value = "";
+    } catch(e) { msg.textContent = "Error: " + e.message; }
+  };
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      document.getElementById("authContainer").classList.add("hidden");
+      document.getElementById("dashboardContainer").classList.remove("hidden");
+      document.getElementById("userEmail").textContent = user.email;
+      // Load user's requests
+      const requestsRef = ref(db, 'users/' + user.uid + '/requests');
+      onValue(requestsRef, (snap) => {
+        const list = document.getElementById("requestsList");
+        list.innerHTML = "";
+        const requests = snap.val();
+        if (requests) {
+          Object.entries(requests).forEach(([id, req]) => {
+            list.innerHTML += `<div class="request-card">
+              <strong>${req.name}</strong> (${req.target} contacts)<br>
+              Status: ${req.status}
+            </div>`;
+          });
+        } else {
+          list.innerHTML = "No requests yet.";
+        }
+      });
+    } else {
+      document.getElementById("authContainer").classList.remove("hidden");
+      document.getElementById("dashboardContainer").classList.add("hidden");
+    }
+  });
+</script>
+</body>
+</html>
