@@ -2,64 +2,127 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>Alpha VCFS Pro</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#0b0f0b; color:#d0d0d0; font-family:'Inter',system-ui,sans-serif; display:flex; justify-content:center; min-height:100vh; padding:20px; }
-  .container { max-width:600px; width:100%; }
-  .card { background:#121812; border:1px solid #1f2a1f; border-radius:12px; padding:20px; margin-bottom:20px; }
-  input, select, button { width:100%; padding:12px; margin:8px 0; background:#0a0f0a; border:1px solid #1f2a1f; color:#fff; border-radius:8px; font-size:1rem; }
-  button { background:#4ade80; color:#000; font-weight:600; cursor:pointer; }
-  button:hover { filter:brightness(1.1); }
-  .hidden { display:none; }
-  .session-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #1f2a1f; }
-  .btn-sm { padding:6px 12px; font-size:0.8rem; width:auto; }
-  .warn { color:#f0f; margin-top:5px; }
+  :root{--bg:#0b0f0b;--card:#121812;--text:#d0d0d0;--head:#fff;--sub:#8b9a8b;--bor:#1f2a1f;--inp-bg:#0a0f0a;--inp-txt:#fff;--btn:#4ade80;--btn-txt:#000;--nav-bg:#0b0f0b;--nav-bor:#1f2a1f;--nav-txt:#6b7b6b;--nav-act:#4ade80;--pref-bg:#1e2a1e;--pref-txt:#4ade80}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;display:flex;justify-content:center;min-height:100vh;padding:20px;margin:0}
+  .container{max-width:560px;width:100%}
+  .card{background:var(--card);border:1px solid var(--bor);border-radius:12px;padding:20px;margin-bottom:20px}
+  input,select,button{width:100%;padding:12px;margin:8px 0;background:var(--inp-bg);border:1px solid var(--bor);color:var(--inp-txt);font-size:1rem;border-radius:8px;outline:none;box-sizing:border-box}
+  button{background:var(--btn);color:var(--btn-txt);font-weight:600;cursor:pointer}
+  button:hover{filter:brightness(1.1)}
+  .hidden{display:none}
+  .warn{color:#f0f;margin-top:5px;text-align:center}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+  .stat-box{background:#1e2a1e;padding:15px;border-radius:8px;text-align:center}
+  .stat-box .value{font-size:2rem;font-weight:700;color:var(--btn)}
+  .stat-box .label{font-size:0.75rem;color:var(--sub);margin-top:5px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:8px;text-align:left;border-bottom:1px solid var(--bor);font-size:0.9rem}
+  th{color:var(--btn)}
+  .session-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bor)}
+  .btn-sm{padding:6px 12px;font-size:0.8rem;width:auto}
+  .flag-select{display:flex;gap:8px}
+  .flag-select select{flex:2}
+  .flag-select input{flex:3}
+  .link-btn{display:block;text-align:center;padding:12px;background:#25D366;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-top:10px}
+  footer{text-align:center;color:var(--sub);font-size:0.7rem;margin-top:20px}
 </style>
 </head>
 <body>
+<div class="container" id="appContainer">
+  <!-- Login / Signup (shown when not logged in AND no ?id) -->
+  <div id="authArea" class="hidden">
+    <div class="card" id="loginCard">
+      <h2>Login</h2>
+      <input type="email" id="loginEmail" placeholder="Email">
+      <input type="password" id="loginPassword" placeholder="Password">
+      <button onclick="login()">Login</button>
+      <p style="margin-top:10px;">No account? <a href="#" onclick="showSignup()" style="color:var(--btn);">Sign up</a></p>
+    </div>
+    <div class="card hidden" id="signupCard">
+      <h2>Sign Up</h2>
+      <input type="email" id="signupEmail" placeholder="Email">
+      <input type="password" id="signupPassword" placeholder="Password">
+      <button onclick="signup()">Sign Up</button>
+      <p style="margin-top:10px;">Already have an account? <a href="#" onclick="showLogin()" style="color:var(--btn);">Login</a></p>
+    </div>
+  </div>
 
-<div class="container" id="authContainer">
-  <div class="card" id="loginCard">
-    <h2>Login</h2>
-    <input type="email" id="loginEmail" placeholder="Email">
-    <input type="password" id="loginPassword" placeholder="Password">
-    <button onclick="login()">Login</button>
-    <p style="margin-top:10px;">No account? <a href="#" onclick="showSignup()" style="color:#4ade80;">Sign up</a></p>
+  <!-- User Dashboard (shown when logged in and no ?id) -->
+  <div id="dashboardArea" class="hidden">
+    <div class="card">
+      <h2>Welcome, <span id="userEmail"></span></h2>
+      <button onclick="logout()" style="background:#f0f;color:#fff;">Logout</button>
+    </div>
+    <div class="card">
+      <h3>Create New VCF Session</h3>
+      <input type="text" id="sessionName" placeholder="Session Name (e.g. Round 1)">
+      <input type="number" id="targetCount" placeholder="Target Contacts (e.g. 50)">
+      <input type="text" id="groupLink" placeholder="WhatsApp Group Invite Link">
+      <button onclick="createSession()">Create Session</button>
+      <div id="createMsg" class="warn"></div>
+    </div>
+    <div class="card">
+      <h3>My Sessions</h3>
+      <div id="sessionsList"></div>
+    </div>
+    <!-- Admin button (only visible for owner) -->
+    <button id="adminBtn" class="hidden" onclick="showAdmin()" style="background:var(--btn);color:var(--btn-txt);">Admin Panel</button>
   </div>
-  <div class="card hidden" id="signupCard">
-    <h2>Sign Up</h2>
-    <input type="email" id="signupEmail" placeholder="Email">
-    <input type="password" id="signupPassword" placeholder="Password">
-    <button onclick="signup()">Sign Up</button>
-    <p style="margin-top:10px;">Already have an account? <a href="#" onclick="showLogin()" style="color:#4ade80;">Login</a></p>
-  </div>
-</div>
 
-<div class="container hidden" id="dashboardContainer">
-  <div class="card">
-    <h2>Welcome, <span id="userEmail"></span></h2>
-    <button onclick="logout()" style="background:#f0f;color:#fff;">Logout</button>
+  <!-- Admin Dashboard (hidden by default) -->
+  <div id="adminArea" class="hidden">
+    <div class="card">
+      <h2>Admin Dashboard</h2>
+      <button onclick="hideAdmin()" style="background:#f0f;color:#fff;">Back to Dashboard</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="value" id="totalUsers">-</div><div class="label">Total Users</div></div>
+      <div class="stat-box"><div class="value" id="totalSessions">-</div><div class="label">Total Sessions</div></div>
+      <div class="stat-box"><div class="value" id="totalContacts">-</div><div class="label">Total Contacts</div></div>
+    </div>
+    <div class="card">
+      <h3>All Users</h3>
+      <table id="usersTable"><thead><tr><th>Email</th><th>Sessions</th><th>Contacts</th></tr></thead><tbody></tbody></table>
+    </div>
   </div>
-  <div class="card">
-    <h3>Create New VCF Session</h3>
-    <input type="text" id="sessionName" placeholder="Session Name (e.g. Round 1)">
-    <input type="number" id="targetCount" placeholder="Target Contacts (e.g. 50)">
-    <input type="text" id="groupLink" placeholder="WhatsApp Group Invite Link">
-    <button onclick="createSession()">Create Session</button>
-    <div id="createMsg" class="warn"></div>
-  </div>
-  <div class="card">
-    <h3>My Sessions</h3>
-    <div id="sessionsList"></div>
+
+  <!-- Public Upload Page (shown when ?id is present, regardless of auth) -->
+  <div id="uploadArea" class="hidden">
+    <h1 style="color:var(--head);margin-bottom:5px;">VCF Session</h1>
+    <p style="color:var(--sub);margin-bottom:15px;" id="sessionTitle">Loading...</p>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="value" id="targetStat">-</div><div class="label">Target</div></div>
+      <div class="stat-box"><div class="value" id="currentStat">-</div><div class="label">Current</div></div>
+      <div class="stat-box"><div class="value" id="remainingStat">-</div><div class="label">Remaining</div></div>
+    </div>
+    <div class="card">
+      <h3>Add Your Contact</h3>
+      <form id="uploadForm">
+        <label>Full name</label>
+        <input type="text" id="upFullName" placeholder="Enter full name" required>
+        <label>Email (optional)</label>
+        <input type="email" id="upEmail" placeholder="Optional email">
+        <label>Country code</label>
+        <div class="flag-select">
+          <select id="upCountryCode" required></select>
+          <input type="tel" id="upPhoneNumber" placeholder="e.g. 8012345678" required pattern="[0-9]{7,15}">
+        </div>
+        <button type="submit" id="submitBtn"><i class="fas fa-upload"></i> Upload Contact</button>
+      </form>
+      <div id="uploadMsg" class="warn"></div>
+      <a id="joinGroupBtn" class="link-btn" href="#" target="_blank"><i class="fab fa-whatsapp"></i> Join WhatsApp Group</a>
+    </div>
+    <footer>Alpha VCFS Pro · Powered by Alpha</footer>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-  import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+  import { getDatabase, ref, push, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAQwmSD9lc6A0G-AhGBMCBayhM4Ox-jcEs",
@@ -74,26 +137,58 @@
   const auth = getAuth(app);
   const db = getDatabase(app);
 
+  const ADMIN_EMAIL = "alexiomhungu9@gmail.com"; // Your email
+
+  // ----- UI switching -----
+  let currentView = null;
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get('id');
+
+  function showView(view) {
+    document.getElementById("authArea").classList.add("hidden");
+    document.getElementById("dashboardArea").classList.add("hidden");
+    document.getElementById("adminArea").classList.add("hidden");
+    document.getElementById("uploadArea").classList.add("hidden");
+    document.getElementById(view).classList.remove("hidden");
+    currentView = view;
+  }
+
+  // If a session ID is present, show the upload page immediately (public)
+  if (sessionId) {
+    showView("uploadArea");
+    loadSessionData(sessionId);
+  } else {
+    // Otherwise wait for auth state
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        showView("dashboardArea");
+        document.getElementById("userEmail").textContent = user.email;
+        // Show admin button only for owner
+        if (user.email === ADMIN_EMAIL) {
+          document.getElementById("adminBtn").classList.remove("hidden");
+        } else {
+          document.getElementById("adminBtn").classList.add("hidden");
+        }
+        loadSessions(user);
+      } else {
+        showView("authArea");
+      }
+    });
+  }
+
+  // ----- Auth functions -----
   window.login = async () => {
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (e) {
-      alert(e.message);
-    }
+    try { await signInWithEmailAndPassword(auth, email, password); }
+    catch(e) { alert(e.message); }
   };
-
   window.signup = async () => {
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-    } catch (e) {
-      alert(e.message);
-    }
+    try { await createUserWithEmailAndPassword(auth, email, password); }
+    catch(e) { alert(e.message); }
   };
-
   window.logout = () => signOut(auth);
 
   window.showSignup = () => {
@@ -105,73 +200,142 @@
     document.getElementById("loginCard").classList.remove("hidden");
   };
 
+  // ----- Session management (Dashboard) -----
   window.createSession = async () => {
     const name = document.getElementById("sessionName").value.trim();
     const target = parseInt(document.getElementById("targetCount").value);
     const groupLink = document.getElementById("groupLink").value.trim();
     const msg = document.getElementById("createMsg");
-    if (!name || !target || !groupLink) {
-      msg.textContent = "All fields are required.";
-      return;
-    }
+    if (!name || !target || !groupLink) { msg.textContent = "All fields required."; return; }
     const user = auth.currentUser;
     if (!user) return;
     try {
       const sessionsRef = push(ref(db, 'users/' + user.uid + '/sessions'));
-      await set(sessionsRef, {
-        name: name,
-        target: target,
-        groupLink: groupLink,
-        createdAt: Date.now()
-      });
+      await set(sessionsRef, { name, target, groupLink, createdAt: Date.now() });
       msg.textContent = "Session created!";
-      document.getElementById("sessionName").value = "";
-      document.getElementById("targetCount").value = "";
-      document.getElementById("groupLink").value = "";
-    } catch (e) {
-      msg.textContent = "Error: " + e.message;
-    }
+    } catch(e) { msg.textContent = "Error: " + e.message; }
   };
 
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      document.getElementById("authContainer").classList.add("hidden");
-      document.getElementById("dashboardContainer").classList.remove("hidden");
-      document.getElementById("userEmail").textContent = user.email;
+  function loadSessions(user) {
+    const sessionsRef = ref(db, 'users/' + user.uid + '/sessions');
+    onValue(sessionsRef, (snap) => {
+      const list = document.getElementById("sessionsList");
+      list.innerHTML = "";
+      const sessions = snap.val();
+      if (sessions) {
+        Object.keys(sessions).forEach((id) => {
+          const s = sessions[id];
+          const div = document.createElement("div");
+          div.className = "session-row";
+          div.innerHTML = `<div><strong>${s.name}</strong><br>Target: ${s.target}</div>
+            <button class="btn-sm" onclick="copySessionLink('${id}')">Copy Link</button>`;
+          list.appendChild(div);
+        });
+      } else list.innerHTML = "No sessions.";
+    });
+  }
 
-      const sessionsRef = ref(db, 'users/' + user.uid + '/sessions');
-      onValue(sessionsRef, (snapshot) => {
-        const list = document.getElementById("sessionsList");
-        list.innerHTML = "";
-        const sessions = snapshot.val();
-        if (sessions) {
-          Object.keys(sessions).forEach((sessionId) => {
-            const data = sessions[sessionId];
-            const div = document.createElement("div");
-            div.className = "session-row";
-            div.innerHTML = `
-              <div>
-                <strong>${data.name}</strong><br>
-                Target: ${data.target} | WhatsApp: ${data.groupLink.substring(0,30)}...
-              </div>
-              <button class="btn-sm" onclick="copyPublicLink('${sessionId}')">Copy Link</button>
-            `;
-            list.appendChild(div);
-          });
-        } else {
-          list.innerHTML = "No sessions yet.";
+  window.copySessionLink = (id) => {
+    const link = `https://status-views-boost.vercel.app/?id=${id}`;
+    navigator.clipboard.writeText(link).then(() => alert("Link copied!")).catch(() => prompt("Copy:", link));
+  };
+
+  // ----- Admin Dashboard -----
+  window.showAdmin = () => {
+    showView("adminArea");
+    loadAdminStats();
+  };
+  window.hideAdmin = () => showView("dashboardArea");
+
+  async function loadAdminStats() {
+    const usersRef = ref(db, 'users');
+    const snap = await get(usersRef);
+    if (!snap.exists()) { document.getElementById("totalUsers").textContent = "0"; return; }
+    const users = snap.val();
+    let totalUsers = 0, totalSessions = 0, totalContacts = 0;
+    const tbody = document.querySelector("#usersTable tbody");
+    tbody.innerHTML = "";
+    for (const [uid, data] of Object.entries(users)) {
+      totalUsers++;
+      let userSessions = 0, userContacts = 0;
+      if (data.sessions) {
+        userSessions = Object.keys(data.sessions).length;
+        totalSessions += userSessions;
+        for (const [sid, sdata] of Object.entries(data.sessions)) {
+          if (sdata.contacts) userContacts += Object.keys(sdata.contacts).length;
         }
-      });
-    } else {
-      document.getElementById("authContainer").classList.remove("hidden");
-      document.getElementById("dashboardContainer").classList.add("hidden");
+        totalContacts += userContacts;
+      }
+      tbody.innerHTML += `<tr><td>${uid.substring(0,10)}...</td><td>${userSessions}</td><td>${userContacts}</td></tr>`;
     }
+    document.getElementById("totalUsers").textContent = totalUsers;
+    document.getElementById("totalSessions").textContent = totalSessions;
+    document.getElementById("totalContacts").textContent = totalContacts;
+  }
+
+  // ----- Upload Page (public) -----
+  async function loadSessionData(sid) {
+    // Search all users for the session
+    const usersRef = ref(db, 'users');
+    const snap = await get(usersRef);
+    if (!snap.exists()) return;
+    const users = snap.val();
+    for (const [uid, data] of Object.entries(users)) {
+      if (data.sessions && data.sessions[sid]) {
+        const session = data.sessions[sid];
+        document.getElementById("sessionTitle").textContent = session.name || "Session";
+        document.getElementById("targetStat").textContent = session.target;
+        document.getElementById("joinGroupBtn").href = session.groupLink || "#";
+        // Listen for contacts
+        const contactsRef = ref(db, `users/${uid}/sessions/${sid}/contacts`);
+        onValue(contactsRef, (snap) => {
+          const count = snap.exists() ? Object.keys(snap.val()).length : 0;
+          document.getElementById("currentStat").textContent = count;
+          document.getElementById("remainingStat").textContent = Math.max(session.target - count, 0);
+          if (count >= session.target) {
+            document.getElementById("submitBtn").disabled = true;
+            document.getElementById("submitBtn").textContent = "🔒 Session Full";
+          }
+        });
+        window.__sessionOwner = uid; // store for upload
+        return;
+      }
+    }
+    document.getElementById("sessionTitle").textContent = "Session not found.";
+  }
+
+  // Populate country dropdown for upload
+  const countries = [
+    {flag:"🇳🇬",code:"+234",name:"Nigeria"},{flag:"🇬🇭",code:"+233",name:"Ghana"},{flag:"🇰🇪",code:"+254",name:"Kenya"},{flag:"🇿🇦",code:"+27",name:"South Africa"},{flag:"🇹🇿",code:"+255",name:"Tanzania"},{flag:"🇺🇬",code:"+256",name:"Uganda"},{flag:"🇿🇼",code:"+263",name:"Zimbabwe"},{flag:"🇺🇸",code:"+1",name:"USA"},{flag:"🇬🇧",code:"+44",name:"UK"}
+  ];
+  const upCountrySelect = document.getElementById("upCountryCode");
+  countries.forEach(c => {
+    const o = document.createElement("option"); o.value = c.code;
+    o.textContent = `${c.flag} ${c.code} (${c.name})`; upCountrySelect.appendChild(o);
   });
 
-  window.copyPublicLink = (sessionId) => {
-    const link = `https://status-views-boost.vercel.app/upload?id=${sessionId}`;
-    navigator.clipboard.writeText(link).then(() => alert("Public link copied!")).catch(() => prompt("Copy this link:", link));
-  };
+  document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("upFullName").value.trim();
+    const email = document.getElementById("upEmail").value.trim() || "";
+    const phoneRaw = document.getElementById("upPhoneNumber").value.trim();
+    const countryCode = upCountrySelect.value;
+    const fullNumber = countryCode + phoneRaw;
+    const msg = document.getElementById("uploadMsg");
+    msg.textContent = "";
+    if (!name || !phoneRaw) { msg.textContent = "Name and phone required."; return; }
+    if (!/^[0-9]{7,15}$/.test(phoneRaw)) { msg.textContent = "Invalid phone number."; return; }
+    const uid = window.__sessionOwner;
+    if (!uid) { msg.textContent = "Session error."; return; }
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true; btn.textContent = "Uploading...";
+    try {
+      const contactsRef = push(ref(db, `users/${uid}/sessions/${sessionId}/contacts`));
+      await set(contactsRef, { name, email, phone: fullNumber, timestamp: Date.now() });
+      // redirect to group link
+      window.location.href = document.getElementById("joinGroupBtn").href;
+    } catch(err) { msg.textContent = "Upload failed."; btn.disabled = false; btn.textContent = "Upload Contact"; }
+  });
 </script>
 </body>
 </html>
