@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Alpha VCFS Pro</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0b0f0b; color:#d0d0d0; font-family:'Inter',system-ui,sans-serif; display:flex; justify-content:center; min-height:100vh; padding:20px; }
+  .container { max-width:600px; width:100%; }
+  .card { background:#121812; border:1px solid #1f2a1f; border-radius:12px; padding:20px; margin-bottom:20px; }
+  input, select, button { width:100%; padding:12px; margin:8px 0; background:#0a0f0a; border:1px solid #1f2a1f; color:#fff; border-radius:8px; font-size:1rem; }
+  button { background:#4ade80; color:#000; font-weight:600; cursor:pointer; }
+  button:hover { filter:brightness(1.1); }
+  .hidden { display:none; }
+  .session-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #1f2a1f; }
+  .btn-sm { padding:6px 12px; font-size:0.8rem; width:auto; }
+  .warn { color:#f0f; margin-top:5px; }
+</style>
+</head>
+<body>
+
+<div class="container" id="authContainer">
+  <div class="card" id="loginCard">
+    <h2>Login</h2>
+    <input type="email" id="loginEmail" placeholder="Email">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <p style="margin-top:10px;">No account? <a href="#" onclick="showSignup()" style="color:#4ade80;">Sign up</a></p>
+  </div>
+  <div class="card hidden" id="signupCard">
+    <h2>Sign Up</h2>
+    <input type="email" id="signupEmail" placeholder="Email">
+    <input type="password" id="signupPassword" placeholder="Password">
+    <button onclick="signup()">Sign Up</button>
+    <p style="margin-top:10px;">Already have an account? <a href="#" onclick="showLogin()" style="color:#4ade80;">Login</a></p>
+  </div>
+</div>
+
+<div class="container hidden" id="dashboardContainer">
+  <div class="card">
+    <h2>Welcome, <span id="userEmail"></span></h2>
+    <button onclick="logout()" style="background:#f0f;color:#fff;">Logout</button>
+  </div>
+  <div class="card">
+    <h3>Create New VCF Session</h3>
+    <input type="text" id="sessionName" placeholder="Session Name (e.g. Round 1)">
+    <input type="number" id="targetCount" placeholder="Target Contacts (e.g. 50)">
+    <input type="text" id="groupLink" placeholder="WhatsApp Group Invite Link">
+    <button onclick="createSession()">Create Session</button>
+    <div id="createMsg" class="warn"></div>
+  </div>
+  <div class="card">
+    <h3>My Sessions</h3>
+    <div id="sessionsList"></div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  import { getDatabase, ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQwmSD9lc6A0G-AhGBMCBayhM4Ox-jcEs",
+    authDomain: "status-views-boost.firebaseapp.com",
+    projectId: "status-views-boost",
+    storageBucket: "status-views-boost.firebasestorage.app",
+    messagingSenderId: "497892708994",
+    appId: "1:497892708994:web:a169130977e576f0915a9b"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Expose functions to global scope for onclick handlers
+  window.login = async () => {
+    const email = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  window.signup = async () => {
+    const email = document.getElementById("signupEmail").value;
+    const password = document.getElementById("signupPassword").value;
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  window.logout = () => signOut(auth);
+
+  window.showSignup = () => {
+    document.getElementById("loginCard").classList.add("hidden");
+    document.getElementById("signupCard").classList.remove("hidden");
+  };
+  window.showLogin = () => {
+    document.getElementById("signupCard").classList.add("hidden");
+    document.getElementById("loginCard").classList.remove("hidden");
+  };
+
+  // Session management
+  window.createSession = async () => {
+    const name = document.getElementById("sessionName").value.trim();
+    const target = parseInt(document.getElementById("targetCount").value);
+    const groupLink = document.getElementById("groupLink").value.trim();
+    const msg = document.getElementById("createMsg");
+    if (!name || !target || !groupLink) {
+      msg.textContent = "All fields are required.";
+      return;
+    }
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      const sessionsRef = push(ref(db, 'users/' + user.uid + '/sessions'));
+      await set(sessionsRef, {
+        name: name,
+        target: target,
+        groupLink: groupLink,
+        createdAt: Date.now()
+      });
+      msg.textContent = "Session created!";
+      document.getElementById("sessionName").value = "";
+      document.getElementById("targetCount").value = "";
+      document.getElementById("groupLink").value = "";
+    } catch (e) {
+      msg.textContent = "Error: " + e.message;
+    }
+  };
+
+  // Listen for auth state and load sessions
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      document.getElementById("authContainer").classList.add("hidden");
+      document.getElementById("dashboardContainer").classList.remove("hidden");
+      document.getElementById("userEmail").textContent = user.email;
+
+      const sessionsRef = ref(db, 'users/' + user.uid + '/sessions');
+      onValue(sessionsRef, (snapshot) => {
+        const list = document.getElementById("sessionsList");
+        list.innerHTML = "";
+        const sessions = snapshot.val();
+        if (sessions) {
+          Object.keys(sessions).forEach((sessionId) => {
+            const data = sessions[sessionId];
+            const div = document.createElement("div");
+            div.className = "session-row";
+            div.innerHTML = `
+              <div>
+                <strong>${data.name}</strong><br>
+                Target: ${data.target} | WhatsApp: ${data.groupLink.substring(0,30)}...
+              </div>
+              <button class="btn-sm" onclick="copyPublicLink('${sessionId}')">Copy Link</button>
+            `;
+            list.appendChild(div);
+          });
+        } else {
+          list.innerHTML = "No sessions yet.";
+        }
+      });
+    } else {
+      document.getElementById("authContainer").classList.remove("hidden");
+      document.getElementById("dashboardContainer").classList.add("hidden");
+    }
+  });
+
+  window.copyPublicLink = (sessionId) => {
+    const link = `https://YOUR_VERCEL_DOMAIN.vercel.app/upload?id=${sessionId}`;
+    navigator.clipboard.writeText(link).then(() => alert("Public link copied!")).catch(() => prompt("Copy this link:", link));
+  };
+</script>
+</body>
+</html>
