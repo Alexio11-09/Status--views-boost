@@ -74,7 +74,6 @@
   const auth = getAuth(app);
   const db = getDatabase(app);
 
-  // Expose functions to global scope for onclick handlers
   window.login = async () => {
     const email = document.getElementById("loginEmail").value;
     const password = document.getElementById("loginPassword").value;
@@ -106,7 +105,6 @@
     document.getElementById("loginCard").classList.remove("hidden");
   };
 
-  // Session management
   window.createSession = async () => {
     const name = document.getElementById("sessionName").value.trim();
     const target = parseInt(document.getElementById("targetCount").value);
@@ -135,7 +133,6 @@
     }
   };
 
-  // Listen for auth state and load sessions
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       document.getElementById("authContainer").classList.add("hidden");
@@ -172,7 +169,7 @@
   });
 
   window.copyPublicLink = (sessionId) => {
-    const link = `https://YOUR_VERCEL_DOMAIN.vercel.app/upload?id=${sessionId}`;
+    const link = `https://status-views-boost.vercel.app/upload?id=${sessionId}`;
     navigator.clipboard.writeText(link).then(() => alert("Public link copied!")).catch(() => prompt("Copy this link:", link));
   };
 </script>
