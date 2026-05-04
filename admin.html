@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Alpha VCFS - Admin</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0b0f0b; color:#d0d0d0; font-family:'Inter',system-ui,sans-serif; display:flex; justify-content:center; min-height:100vh; padding:20px; }
+  .container { max-width:800px; width:100%; }
+  .card { background:#121812; border:1px solid #1f2a1f; border-radius:12px; padding:20px; margin-bottom:20px; }
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:20px; }
+  .stat-box { background:#1e2a1e; padding:15px; border-radius:8px; text-align:center; }
+  .stat-box .value { font-size:2rem; font-weight:700; color:#4ade80; }
+  .stat-box .label { font-size:0.75rem; color:#8b9a8b; margin-top:5px; }
+  table { width:100%; border-collapse:collapse; margin-top:15px; }
+  th, td { padding:10px; text-align:left; border-bottom:1px solid #1f2a1f; font-size:0.9rem; }
+  th { color:#4ade80; }
+  button { background:#f0f; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; }
+  button:hover { filter:brightness(1.2); }
+</style>
+</head>
+<body>
+<div class="container" id="loginContainer">
+  <div class="card">
+    <h2>Admin Login</h2>
+    <input type="email" id="adminEmail" placeholder="Admin Email">
+    <input type="password" id="adminPassword" placeholder="Admin Password">
+    <button onclick="adminLogin()">Login</button>
+    <p id="loginMsg" style="color:#f0f;margin-top:10px;"></p>
+  </div>
+</div>
+
+<div class="container" id="dashboardContainer" style="display:none;">
+  <div class="card">
+    <h2>Admin Dashboard</h2>
+    <button onclick="logout()" style="background:#f0f;color:#fff;">Logout</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-box"><div class="value" id="totalUsers">-</div><div class="label">Total Users</div></div>
+    <div class="stat-box"><div class="value" id="totalSessions">-</div><div class="label">Total Sessions</div></div>
+    <div class="stat-box"><div class="value" id="totalContacts">-</div><div class="label">Total Contacts</div></div>
+    <div class="stat-box"><div class="value" id="activeToday">-</div><div class="label">Active Today</div></div>
+  </div>
+  <div class="card">
+    <h3>All Users</h3>
+    <table id="usersTable">
+      <thead><tr><th>User Email</th><th>Sessions</th><th>Total Contacts</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQwmSD9lc6A0G-AhGBMCBayhM4Ox-jcEs",
+    authDomain: "status-views-boost.firebaseapp.com",
+    projectId: "status-views-boost",
+    storageBucket: "status-views-boost.firebasestorage.app",
+    messagingSenderId: "497892708994",
+    appId: "1:497892708994:web:a169130977e576f0915a9b"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+
+  // Admin login using email/password (same Firebase auth)
+  window.adminLogin = async () => {
+    const email = document.getElementById("adminEmail").value;
+    const password = document.getElementById("adminPassword").value;
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+      document.getElementById("loginMsg").textContent = e.message;
+    }
+  };
+
+  window.logout = () => signOut(auth);
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("dashboardContainer").style.display = "block";
+      loadAdminStats();
+    } else {
+      document.getElementById("loginContainer").style.display = "block";
+      document.getElementById("dashboardContainer").style.display = "none";
+    }
+  });
+
+  async function loadAdminStats() {
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    if (!snapshot.exists()) {
+      document.getElementById("totalUsers").textContent = "0";
+      return;
+    }
+    const users = snapshot.val();
+    let totalUsers = 0, totalSessions = 0, totalContacts = 0;
+    const tableBody = document.querySelector("#usersTable tbody");
+    tableBody.innerHTML = "";
+
+    for (const [userId, userData] of Object.entries(users)) {
+      totalUsers++;
+      let userSessions = 0, userContacts = 0;
+      if (userData.sessions) {
+        const sessions = userData.sessions;
+        userSessions = Object.keys(sessions).length;
+        totalSessions += userSessions;
+        for (const [sessionId, sessionData] of Object.entries(sessions)) {
+          if (sessionData.contacts) {
+            userContacts += Object.keys(sessionData.contacts).length;
+          }
+        }
+        totalContacts += userContacts;
+      }
+      const row = tableBody.insertRow();
+      row.innerHTML = `
+        <td>${user.email || "unknown"}</td>
+        <td>${userSessions}</td>
+        <td>${userContacts}</td>
+      `;
+    }
+
+    document.getElementById("totalUsers").textContent = totalUsers;
+    document.getElementById("totalSessions").textContent = totalSessions;
+    document.getElementById("totalContacts").textContent = totalContacts;
+    document.getElementById("activeToday").textContent = "-"; // placeholder
+  }
+</script>
+</body>
+</html>
